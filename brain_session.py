@@ -14,11 +14,25 @@ from run_pytorch import TorchModel, MODEL_PARAMS, DT, get_hash_tables, get_weigh
 
 
 class BrainSession:
-    def __init__(self, experiment="sugar", seed=42):
+    def __init__(self, experiment="sugar", seed=42, *, input_groups=None):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.config = get_experiment(experiment)
         self.id_to_index, _ = get_hash_tables(str(path_comp))
-        self.input_ids = tuple(self.config["neu_exc"])
+        names = (experiment,) if input_groups is None else tuple(input_groups)
+        if isinstance(input_groups, str) or not names:
+            raise ValueError("input_groups must be a nonempty sequence of names.")
+        if len(set(names)) != len(names):
+            raise ValueError("Input group names must be unique.")
+
+        self.input_groups = {
+            name: tuple(get_experiment(name)["neu_exc"])
+            for name in names
+        }
+        self.input_ids = tuple(dict.fromkeys(
+            neuron
+            for ids in self.input_groups.values()
+            for neuron in ids
+        ))
         self.input_indices = [
             self.id_to_index[neuron] for neuron in self.input_ids
         ]
