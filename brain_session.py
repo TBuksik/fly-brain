@@ -54,6 +54,27 @@ class BrainSession:
         self.rates.zero_()
         self.rates[:, self.input_indices] = rate_hz
 
+    def set_stimuli(self, rates_by_id):
+        """Replace input rates for the configured stimulation group."""
+        allowed = set(self.input_ids)
+        validated = []
+
+        for neuron_id, rate in rates_by_id.items():
+            if neuron_id not in allowed:
+                raise ValueError(
+                    f"Neuron {neuron_id} is outside this session's input group."
+                )
+
+            rate = float(rate)
+            if not math.isfinite(rate) or not 0 <= rate <= 1000 / DT:
+                raise ValueError("Invalid stimulus frequency.")
+
+            validated.append((self.id_to_index[neuron_id], rate))
+
+        self.rates.zero_()
+        for index, rate in validated:
+            self.rates[:, index] = rate
+
     @torch.no_grad()
     def advance(self, duration_ms):
         duration_ms = float(duration_ms)
