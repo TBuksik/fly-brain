@@ -76,7 +76,7 @@ def main():
     print("\nMetoda:", args.mode)
     print("Seed:", args.seed)
     print("Cel:", args.target)
-    print("Cel osiągnięty po [ms]:", reached_ms)
+    print("Granica celu osiągnięta/przekroczona po [ms]:", reached_ms)
     print("Końcowa pozycja:", round(movement.position, 4))
     print("Przekroczenie:", round(max(0, movement.position - args.target), 4))
     print("Zapisano:", output)
