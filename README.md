@@ -412,6 +412,81 @@ Legacy version 630 data is kept in `data/archive/` for paper figure reproduction
 - NEST GPU compiled from source (for `--nestgpu` backend)
 - `scripts/setup_WSL_CUDA.sh` documents the full setup from a fresh Windows machine
 
+## Sugar-region environment prototype
+
+The prototype connects position-dependent sugar stimulation to the
+stateful PyTorch brain model. Spikes from the DNg103 pair are converted
+into a one-dimensional position change: 0.1 arbitrary units per spike.
+
+DNg103 is used as an experimental readout. This mapping does not establish
+its biological role in walking. The prototype does not implement learning,
+turning, or exploration.
+
+### Run an experiment
+
+From the repository directory, activate the existing environment:
+
+```bash
+conda activate brain-fly
+python run_environment.py
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--seed` | `42` | Random seed |
+| `--region-start` | `0.0` | Sugar region start |
+| `--region-end` | `1.0` | Sugar region end |
+| `--region-rate` | `200.0` | Stimulation frequency in Hz inside the region |
+| `--start-position` | `0.0` | Initial position |
+| `--duration-ms` | `300` | Duration; positive integer multiple of 10 ms |
+
+The region includes its start and excludes its end, with a numerical
+boundary tolerance of 1e-9 position units. Stimulation is updated every
+10 ms; the brain model advances internally in 0.1 ms steps.
+
+For example, run a longer experiment with weaker stimulation:
+
+```bash
+python run_environment.py --duration-ms 1000 --region-rate 50
+```
+
+Each run writes a timestamped CSV to `data/results/environment/`.
+The summary reports the first recorded crossing of the upper boundary,
+stimulus switch-off, position at switch-off, and subsequent displacement.
+`None` means no upper-boundary crossing was recorded.
+
+### Replay a saved trajectory
+
+```bash
+python replay_environment.py
+```
+
+Without an argument, this selects the most recently modified CSV.
+To select a particular run:
+
+```bash
+python replay_environment.py data/results/environment/YOUR_RUN.csv
+```
+
+Open the printed HTML path in a browser. The replay supports pause,
+resume, restart, and a time slider. Playback is 20 times slower than
+simulation time and uses the recorded CSV; it does not run the brain live.
+
+Position changes at the end of each recorded step. The displayed spike
+count is the total for that entire step.
+
+### Annotation provenance
+
+The pinned annotation URL, commit, and SHA-256 are recorded in
+`data/annotations/Supplemental_file1_neuron_annotations.source.json`.
+To download or verify the local annotation table:
+
+```bash
+python download_annotations.py
+```
+
+The downloaded TSV is excluded from Git.
+
 ## License
 
 Except where otherwise noted, this project is licensed under the GNU General
