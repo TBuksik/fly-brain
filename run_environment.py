@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,15 +15,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--region-end", type=float, default=1.0)
+    parser.add_argument("--start-position", type=float, default=0.0)
     args = parser.parse_args()
+    if not math.isfinite(args.start_position):
+        parser.error("--start-position must be finite")
 
     brain = BrainSession(experiment="sugar", seed=args.seed)
     output_ids = (720575940635179871, 720575940606866377)
     indices = [brain.id_to_index[n] for n in output_ids]
     movement = MovementController(indices)
+    movement.position = args.start_position
     environment = SugarEnvironment(end=args.region_end)
     rows = []
-    exit_ms = None
+    exit_ms = (
+        0.0 if movement.position >= environment.end else None
+    )
 
     for _ in range(30):
         start = brain.time_ms
@@ -38,6 +45,7 @@ def main():
 
         rows.append({
             "seed": args.seed,
+            "initial_position": args.start_position,
             "region_start": environment.start,
             "region_end": environment.end,
             "region_rate_hz": environment.rate_hz,
