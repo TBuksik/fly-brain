@@ -13,13 +13,14 @@ from sugar_environment import SugarEnvironment
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--region-end", type=float, default=1.0)
     args = parser.parse_args()
 
     brain = BrainSession(experiment="sugar", seed=args.seed)
     output_ids = (720575940635179871, 720575940606866377)
     indices = [brain.id_to_index[n] for n in output_ids]
     movement = MovementController(indices)
-    environment = SugarEnvironment()
+    environment = SugarEnvironment(end=args.region_end)
     rows = []
     exit_ms = None
 
