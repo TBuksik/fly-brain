@@ -14,11 +14,14 @@ from sugar_environment import SugarEnvironment
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--duration-ms", type=int, default=300)
     parser.add_argument("--region-start", type=float, default=0.0)
     parser.add_argument("--region-end", type=float, default=1.0)
     parser.add_argument("--region-rate", type=float, default=200.0)
     parser.add_argument("--start-position", type=float, default=0.0)
     args = parser.parse_args()
+    if args.duration_ms <= 0 or args.duration_ms % 10 != 0:
+        parser.error("--duration-ms must be positive and a multiple of 10")
     if not math.isfinite(args.start_position):
         parser.error("--start-position must be finite")
 
@@ -37,7 +40,7 @@ def main():
         0.0 if movement.position >= environment.end - 1e-9 else None
     )
 
-    for _ in range(30):
+    for _ in range(args.duration_ms // 10):
         start = brain.time_ms
         position_before = movement.position
         rate = environment.stimulus(position_before)
