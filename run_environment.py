@@ -73,7 +73,30 @@ def main():
         writer.writeheader()
         writer.writerows(rows)
 
+    stimulated = False
+    off_row = None
+    for row in rows:
+        if row["sugar_hz"] > 0:
+            stimulated = True
+        elif stimulated:
+            off_row = row
+            break
+
     print("Seed:", args.seed)
+    if off_row is not None:
+        print("Wyłączenie bodźca [ms]:", off_row["start_ms"])
+        print(
+            "Pozycja przy wyłączeniu:",
+            round(off_row["position_before"], 4),
+        )
+        print(
+            "Ruch po wyłączeniu:",
+            round(movement.position - off_row["position_before"], 4),
+        )
+    elif stimulated:
+        print("Bodziec nie został wyłączony w zapisanym przebiegu.")
+    else:
+        print("Bodziec był wyłączony przez cały przebieg.")
     print("Wyjście z obszaru odnotowane po [ms]:", exit_ms)
     print("Końcowa pozycja:", round(movement.position, 4))
     print("Impulsy DNg103:", movement.total_spikes)
