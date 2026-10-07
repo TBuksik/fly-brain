@@ -4,7 +4,7 @@ import math
 
 
 class TargetController:
-    def __init__(self, target=1.0, max_rate_hz=100.0, mode="decreasing"):
+    def __init__(self, target=1.0, max_rate_hz=100.0, mode="decreasing", min_rate_hz=0.0):
         self.target = float(target)
         self.max_rate_hz = float(max_rate_hz)
         self.mode = mode
@@ -13,6 +13,13 @@ class TargetController:
             raise ValueError("Target must be positive and finite.")
         if not math.isfinite(self.max_rate_hz) or self.max_rate_hz < 0:
             raise ValueError("Maximum rate must be nonnegative and finite.")
+        self.min_rate_hz = float(min_rate_hz)
+        if (
+            not math.isfinite(self.min_rate_hz)
+            or not 0 <= self.min_rate_hz <= self.max_rate_hz
+        ):
+            raise ValueError("Minimum rate must be between zero and maximum.")
+
         if mode not in ("constant", "decreasing"):
             raise ValueError("Mode must be constant or decreasing.")
 
@@ -29,4 +36,4 @@ class TargetController:
             return self.max_rate_hz
 
         fraction = min(1.0, remaining / self.target)
-        return self.max_rate_hz * fraction
+        return max(self.min_rate_hz, self.max_rate_hz * fraction)
