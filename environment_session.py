@@ -42,6 +42,16 @@ class EnvironmentSession:
             else None
         )
 
+    def reset(self):
+        self.brain.reset(seed=self.seed)
+        self.movement.reset()
+        self.movement.position = self.initial_position
+        self.exit_ms = (
+            0.0
+            if self.initial_position >= self.environment.end - 1e-9
+            else None
+        )
+
     def step(self):
         start = self.brain.time_ms
         position_before = self.movement.position
