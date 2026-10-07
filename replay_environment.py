@@ -60,6 +60,12 @@ small{display:block;color:#9ca3af;margin:16px 0}
 <canvas id="view" width="900" height="260"></canvas>
 <p id="status"></p>
 <button id="replay">Odtwórz ponownie</button>
+<button id="pause">Pauza</button>
+<p>
+<label for="timeline">Czas symulacji:</label>
+<input id="timeline" type="range" min="0" value="0" step="0.1"
+       style="width:100%">
+</p>
 <small>Odtwarzanie 20 razy wolniejsze od czasu symulacji.
 Ruch wynika z zapisanych impulsów DNg103.</small>
 <script>
@@ -97,21 +103,70 @@ function draw(row, time, position) {
     | Bodziec w kroku: ${row.rate} Hz | Impulsy w kroku: ${row.spikes}`;
 }
 
+const timeline = document.querySelector("#timeline");
+const pauseButton = document.querySelector("#pause");
+const firstTime = rows[0].start;
+const lastTime = rows[rows.length-1].end;
+timeline.min = firstTime;
+timeline.max = lastTime;
+
 let frame;
-function replay(){
-  cancelAnimationFrame(frame);
-  const origin=performance.now();
-  function tick(now){
-    const time=Math.min((now-origin)/20,rows[rows.length-1].end);
-    const row=rows.find(r=>time<r.end)||rows[rows.length-1];
-    // Pozycja aktualizuje się po zakończeniu kroku, tak jak w symulacji.
-    const position=time>=row.end?row.position:row.before;
-    draw(row,time,position);
-    if(time<rows[rows.length-1].end) frame=requestAnimationFrame(tick);
-  }
-  frame=requestAnimationFrame(tick);
+let playing = false;
+let currentTime = firstTime;
+let previousWallTime;
+
+function render(){
+  const row = rows.find(r => currentTime < r.end) || rows[rows.length-1];
+  // Zachowujemy skokową aktualizację pozycji z symulacji.
+  const position = currentTime >= row.end ? row.position : row.before;
+  draw(row, currentTime, position);
+  timeline.value = currentTime;
 }
-document.querySelector("#replay").onclick=replay;
+
+function pause(){
+  playing = false;
+  cancelAnimationFrame(frame);
+  pauseButton.textContent = "Wznów";
+}
+
+function tick(now){
+  if(!playing) return;
+  currentTime = Math.min(
+    currentTime + (now - previousWallTime) / 20,
+    lastTime
+  );
+  previousWallTime = now;
+  render();
+  if(currentTime >= lastTime){
+    pause();
+  } else {
+    frame = requestAnimationFrame(tick);
+  }
+}
+
+function play(){
+  if(playing) return;
+  if(currentTime >= lastTime) currentTime = firstTime;
+  playing = true;
+  previousWallTime = performance.now();
+  pauseButton.textContent = "Pauza";
+  render();
+  frame = requestAnimationFrame(tick);
+}
+
+function replay(){
+  pause();
+  currentTime = firstTime;
+  play();
+}
+
+pauseButton.onclick = () => playing ? pause() : play();
+timeline.oninput = () => {
+  pause();
+  currentTime = Number(timeline.value);
+  render();
+};
+document.querySelector("#replay").onclick = replay;
 replay();
 </script>
 </html>"""
