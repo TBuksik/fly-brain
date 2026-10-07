@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--region-start", type=float, default=0.0)
     parser.add_argument("--region-end", type=float, default=1.0)
+    parser.add_argument("--region-rate", type=float, default=200.0)
     parser.add_argument("--start-position", type=float, default=0.0)
     args = parser.parse_args()
     if not math.isfinite(args.start_position):
@@ -27,7 +28,9 @@ def main():
     movement = MovementController(indices)
     movement.position = args.start_position
     environment = SugarEnvironment(
-        start=args.region_start, end=args.region_end
+        start=args.region_start,
+        end=args.region_end,
+        rate_hz=args.region_rate,
     )
     rows = []
     exit_ms = (
