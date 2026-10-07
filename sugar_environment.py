@@ -23,6 +23,6 @@ class SugarEnvironment:
 
         return (
             self.rate_hz
-            if self.start <= position < self.end
+            if self.start - 1e-9 <= position < self.end - 1e-9
             else 0.0
         )

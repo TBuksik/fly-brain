@@ -14,6 +14,7 @@ from sugar_environment import SugarEnvironment
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--region-start", type=float, default=0.0)
     parser.add_argument("--region-end", type=float, default=1.0)
     parser.add_argument("--start-position", type=float, default=0.0)
     args = parser.parse_args()
@@ -25,10 +26,12 @@ def main():
     indices = [brain.id_to_index[n] for n in output_ids]
     movement = MovementController(indices)
     movement.position = args.start_position
-    environment = SugarEnvironment(end=args.region_end)
+    environment = SugarEnvironment(
+        start=args.region_start, end=args.region_end
+    )
     rows = []
     exit_ms = (
-        0.0 if movement.position >= environment.end else None
+        0.0 if movement.position >= environment.end - 1e-9 else None
     )
 
     for _ in range(30):
@@ -40,7 +43,7 @@ def main():
         counts = brain.advance(10)
         displacement = movement.update(counts)
 
-        if exit_ms is None and movement.position >= environment.end:
+        if exit_ms is None and movement.position >= environment.end - 1e-9:
             exit_ms = brain.time_ms
 
         rows.append({
