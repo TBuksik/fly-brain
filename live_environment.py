@@ -32,7 +32,7 @@ const status=document.querySelector("#status");
 const playButton=document.querySelector("#play");
 const stepButton=document.querySelector("#step");
 const resetButton=document.querySelector("#reset");
-let running=false, busy=false;
+let running=false, busy=false, loopActive=false;
 
 function draw(s){
   const low=Math.min(0,s.position)-0.2;
@@ -60,8 +60,8 @@ function draw(s){
 
 function controls(){
   playButton.textContent=running?"Pauza":"Uruchom";
-  stepButton.disabled=busy||running;
-  resetButton.disabled=busy||running;
+  stepButton.disabled=busy||running||loopActive;
+  resetButton.disabled=busy||running||loopActive;
 }
 
 async function request(path,method="POST"){
@@ -81,10 +81,16 @@ async function request(path,method="POST"){
 }
 
 async function loop(){
-  while(running){
-    if(!await request("/step")) break;
-    // Przeglądarka odświeża obraz przed kolejnym żądaniem.
-    await new Promise(resolve=>setTimeout(resolve,50));
+  if(loopActive) return;
+  loopActive=true;
+  try{
+    while(running){
+      if(!await request("/step")) break;
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
+  }finally{
+    loopActive=false;
+    controls();
   }
 }
 
