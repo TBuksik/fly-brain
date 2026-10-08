@@ -1,5 +1,6 @@
 """Local browser interface to a live environment session."""
 
+import argparse
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -35,14 +36,14 @@ const resetButton=document.querySelector("#reset");
 let running=false, busy=false, loopActive=false;
 
 function draw(s){
-  const low=Math.min(0,s.position)-0.2;
-  const high=Math.max(1,s.position)+0.3;
+  const low=Math.min(s.regionStart,s.initialPosition,s.position)-0.2;
+  const high=Math.max(s.regionEnd,s.initialPosition,s.position)+0.3;
   const x=p=>50+(p-low)/(high-low)*800;
   ctx.clearRect(0,0,900,260);
   ctx.fillStyle="#14532d";
-  ctx.fillRect(x(0),70,x(1)-x(0),120);
+  ctx.fillRect(x(s.regionStart),70,x(s.regionEnd)-x(s.regionStart),120);
   ctx.fillStyle="#bbf7d0";ctx.font="18px system-ui";
-  ctx.fillText("Obszar cukru",x(0)+12,95);
+  ctx.fillText("Obszar cukru",x(s.regionStart)+12,95);
   ctx.strokeStyle="#94a3b8";
   ctx.beginPath();ctx.moveTo(50,165);ctx.lineTo(850,165);ctx.stroke();
   const px=x(s.position);
@@ -108,10 +109,27 @@ request("/state","GET").then(()=>{playButton.disabled=false;});
 
 def main():
     print("Ładowanie mózgu...", flush=True)
-    session = EnvironmentSession(seed=42)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--region-start", type=float, default=0.0)
+    parser.add_argument("--region-end", type=float, default=1.0)
+    parser.add_argument("--region-rate", type=float, default=200.0)
+    parser.add_argument("--start-position", type=float, default=0.0)
+    args = parser.parse_args()
+
+    session = EnvironmentSession(
+        seed=args.seed,
+        region_start=args.region_start,
+        region_end=args.region_end,
+        region_rate=args.region_rate,
+        start_position=args.start_position,
+    )
 
     def state():
         return {
+            "regionStart": session.environment.start,
+            "regionEnd": session.environment.end,
+            "initialPosition": session.initial_position,
             "time": session.brain.time_ms,
             "position": session.movement.position,
             "rate": session.environment.stimulus(session.movement.position),
