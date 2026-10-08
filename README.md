@@ -475,6 +475,25 @@ simulation time and uses the recorded CSV; it does not run the brain live.
 Position changes at the end of each recorded step. The displayed spike
 count is the total for that entire step.
 
+### Live browser simulation
+
+```bash
+python live_environment.py
+```
+
+Keep the terminal running and open http://localhost:8000 in a browser.
+The controls support running, pausing, advancing one 10 ms step, and
+resetting the session to its initial state and seed.
+
+Each step advances the brain model. Simulation runs slower than
+wall-clock time. Pausing allows an already requested step to finish.
+
+The displayed stimulation frequency applies to the next step.
+Current defaults: seed 42, sugar region [0, 1), stimulation 200 Hz,
+and initial position 0.
+
+Stop the server with Ctrl+C in the terminal.
+
 ### Annotation provenance
 
 The pinned annotation URL, commit, and SHA-256 are recorded in
