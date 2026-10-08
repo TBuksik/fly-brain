@@ -489,8 +489,14 @@ Each step advances the brain model. Simulation runs slower than
 wall-clock time. Pausing allows an already requested step to finish.
 
 The displayed stimulation frequency applies to the next step.
-Current defaults: seed 42, sugar region [0, 1), stimulation 200 Hz,
-and initial position 0.
+Defaults: seed 42, sugar region [0, 1), stimulation 200 Hz,
+and initial position 0. These can be configured from the command line:
+
+```bash
+python live_environment.py --seed 42 --region-start 0.5 --region-end 1.5 --region-rate 50 --start-position 0.5
+```
+
+Reset restores the configured initial position and seed.
 
 Stop the server with Ctrl+C in the terminal.
 
