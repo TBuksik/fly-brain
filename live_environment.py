@@ -27,6 +27,7 @@ small{display:block;margin-top:20px;color:#9ca3af}
 <h1>Fly Brain: podgląd na żywo</h1>
 <canvas id="view" width="900" height="260"></canvas>
 <p id="status">Ładowanie…</p>
+<p id="last-step">Brak wykonanego kroku.</p>
 <button id="play">Uruchom</button>
 <button id="step">Jeden krok</button>
 <button id="reset">Od początku</button>
@@ -41,6 +42,7 @@ Model wykonuje 10 ms symulacji na krok.</small>
 const canvas=document.querySelector("#view");
 const ctx=canvas.getContext("2d");
 const status=document.querySelector("#status");
+const lastStep=document.querySelector("#last-step");
 const playButton=document.querySelector("#play");
 const stepButton=document.querySelector("#step");
 const resetButton=document.querySelector("#reset");
@@ -49,6 +51,14 @@ const rateButton=document.querySelector("#apply-rate");
 let running=false, busy=false, loopActive=false;
 
 function draw(s){
+  const row=s.lastStep;
+  lastStep.textContent=row
+    ? `Ostatni krok: ${row.start_ms}–${row.end_ms} ms
+       | Bodziec: ${row.sugar_hz} Hz
+       | DNg103 lewy: ${row.dng103_left_spikes}
+       | DNg103 prawy: ${row.dng103_right_spikes}
+       | Przesunięcie: ${row.displacement.toFixed(2)}`
+    : "Brak wykonanego kroku.";
   rateInput.max=s.maxRate;
   if(document.activeElement!==rateInput) rateInput.value=s.regionRate;
   const low=Math.min(s.regionStart,s.initialPosition,s.position)-0.2;
@@ -148,6 +158,7 @@ def main():
     )
 
     output = None
+    last_step = None
     directory = (
         Path(__file__).resolve().parent / "data/results/environment"
     )
@@ -176,6 +187,7 @@ def main():
 
     def state():
         return {
+            "lastStep": last_step,
             "regionRate": session.environment.rate_hz,
             "maxRate": 1000 / DT,
             "regionStart": session.environment.start,
@@ -205,13 +217,15 @@ def main():
                 self.send(b"Not found", "text/plain", 404)
 
         def do_POST(self):
-            nonlocal output
+            nonlocal output, last_step
             try:
                 if self.path == "/step":
                     row = session.step()
+                    last_step = row
                     record_step(row)
                 elif self.path == "/reset":
                     session.reset()
+                    last_step = None
                     session.environment.rate_hz = args.region_rate
                     output = None
                 elif urlsplit(self.path).path == "/rate":
