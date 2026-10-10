@@ -1,7 +1,10 @@
 """Local browser interface to a live environment session."""
 
 import argparse
+import csv
 import json
+from datetime import datetime, timezone
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from environment_session import EnvironmentSession
@@ -125,6 +128,33 @@ def main():
         start_position=args.start_position,
     )
 
+    output = None
+    directory = (
+        Path(__file__).resolve().parent / "data/results/environment"
+    )
+
+    def record_step(row):
+        nonlocal output
+        first = output is None
+        if first:
+            directory.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+            destination = directory / f"live-seed{args.seed}-{stamp}.csv"
+        else:
+            destination = output
+
+        with destination.open(
+            "x" if first else "a", newline="", encoding="utf-8"
+        ) as file:
+            writer = csv.DictWriter(file, fieldnames=list(row))
+            if first:
+                writer.writeheader()
+            writer.writerow(row)
+
+        if first:
+            output = destination
+            print("Zapis przebiegu:", output, flush=True)
+
     def state():
         return {
             "regionStart": session.environment.start,
@@ -154,11 +184,14 @@ def main():
                 self.send(b"Not found", "text/plain", 404)
 
         def do_POST(self):
+            nonlocal output
             try:
                 if self.path == "/step":
-                    session.step()
+                    row = session.step()
+                    record_step(row)
                 elif self.path == "/reset":
                     session.reset()
+                    output = None
                 else:
                     self.send(b"Not found", "text/plain", 404)
                     return
