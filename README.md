@@ -496,7 +496,15 @@ and initial position 0. These can be configured from the command line:
 python live_environment.py --seed 42 --region-start 0.5 --region-end 1.5 --region-rate 50 --start-position 0.5
 ```
 
-Reset restores the configured initial position and seed.
+Reset restores the configured initial position, seed, and stimulation rate.
+
+While paused, enter a frequency in the browser and click "Zastosuj".
+The new rate applies inside the sugar region on subsequent steps,
+preserving simulation time, position, and brain state.
+Outside the region, stimulation remains zero.
+
+CSV rows record the stimulation rate used for each step.
+Changing the rate does not start a new recording.
 
 Each completed step is saved to a CSV in `data/results/environment/`.
 The first step creates a `live-seed...csv` file and prints its path.
