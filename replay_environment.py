@@ -32,6 +32,8 @@ def main():
         "before": float(row["position_before"]),
         "position": float(row["position"]),
         "rate": float(row["sugar_hz"]),
+        "regionStart": float(row["region_start"]),
+        "regionEnd": float(row["region_end"]),
         "left": int(row["dng103_left_spikes"]),
         "right": int(row["dng103_right_spikes"]),
         "spikes": (
@@ -40,11 +42,7 @@ def main():
         ),
     } for row in rows]
 
-    payload = {
-        "rows": data,
-        "regionStart": float(rows[0]["region_start"]),
-        "regionEnd": float(rows[0]["region_end"]),
-    }
+    payload = {"rows": data}
 
     html = """<!doctype html>
 <html lang="pl">
@@ -81,8 +79,12 @@ const canvas = document.querySelector("#view");
 const ctx = canvas.getContext("2d");
 const status = document.querySelector("#status");
 const rows = data.rows;
-const low = Math.min(data.regionStart, ...rows.map(r=>r.before)) - 0.2;
-const high = Math.max(data.regionEnd, ...rows.map(r=>r.position)) + 0.3;
+const bounds = rows.reduce((bounds,row)=>({
+  low: Math.min(bounds.low,row.regionStart,row.before,row.position),
+  high: Math.max(bounds.high,row.regionEnd,row.before,row.position),
+}), {low: Infinity, high: -Infinity});
+const low = bounds.low - 0.2;
+const high = bounds.high + 0.3;
 const x = p => 50 + (p-low)/(high-low)*800;
 
 
@@ -152,11 +154,11 @@ function draw(row, time, position) {
   drawSpikes(time);
   ctx.clearRect(0,0,900,260);
   ctx.fillStyle="#14532d";
-  ctx.fillRect(x(data.regionStart),70,
-    x(data.regionEnd)-x(data.regionStart),120);
+  ctx.fillRect(x(row.regionStart),70,
+    x(row.regionEnd)-x(row.regionStart),120);
   ctx.fillStyle="#bbf7d0";
   ctx.font="18px system-ui";
-  ctx.fillText("Obszar cukru",x(data.regionStart)+12,95);
+  ctx.fillText("Obszar cukru",x(row.regionStart)+12,95);
   ctx.strokeStyle="#94a3b8";
   ctx.beginPath();ctx.moveTo(50,165);ctx.lineTo(850,165);ctx.stroke();
 
@@ -171,6 +173,7 @@ function draw(row, time, position) {
   ctx.beginPath();ctx.arc(px+13,130,5,0,Math.PI*2);ctx.fill();
 
   status.textContent=`Czas: ${time.toFixed(0)} ms | Pozycja: ${position.toFixed(2)}
+    | Obszar: [${row.regionStart}, ${row.regionEnd})
     | Bodziec w kroku: ${row.rate} Hz | Impulsy w kroku: ${row.spikes}`;
 }
 

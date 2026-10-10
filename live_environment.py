@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from brain_session import DT
 from environment_session import EnvironmentSession
+from sugar_environment import SugarEnvironment
 
 
 HTML = """<!doctype html>
@@ -42,6 +43,13 @@ Zielone tło oznacza bodziec większy od 0 Hz w tym kroku.
 <input id="rate" type="number" min="0" step="any" style="width:110px">
 <button id="apply-rate">Zastosuj</button>
 </p>
+<p>
+<label for="region-start">Początek obszaru:</label>
+<input id="region-start" type="number" step="any" required style="width:110px">
+<label for="region-end">Koniec:</label>
+<input id="region-end" type="number" step="any" required style="width:110px">
+<button id="apply-region">Zmień obszar</button>
+</p>
 <small>Umowna pozycja: 0.1 jednostki na impuls DNg103.
 Model wykonuje 10 ms symulacji na krok.</small>
 <script>
@@ -54,6 +62,9 @@ const stepButton=document.querySelector("#step");
 const resetButton=document.querySelector("#reset");
 const rateInput=document.querySelector("#rate");
 const rateButton=document.querySelector("#apply-rate");
+const regionStartInput=document.querySelector("#region-start");
+const regionEndInput=document.querySelector("#region-end");
+const regionButton=document.querySelector("#apply-region");
 let running=false, busy=false, loopActive=false;
 
 
@@ -131,6 +142,10 @@ function draw(s){
        | DNg103 prawy: ${row.dng103_right_spikes}
        | Przesunięcie: ${row.displacement.toFixed(2)}`
     : "Brak wykonanego kroku.";
+  if(document.activeElement!==regionStartInput)
+    regionStartInput.value=s.regionStart;
+  if(document.activeElement!==regionEndInput)
+    regionEndInput.value=s.regionEnd;
   rateInput.max=s.maxRate;
   if(document.activeElement!==rateInput) rateInput.value=s.regionRate;
   const low=Math.min(s.regionStart,s.initialPosition,s.position)-0.2;
@@ -159,6 +174,9 @@ function draw(s){
 function controls(){
   playButton.textContent=running?"Pauza":"Uruchom";
   playButton.disabled=busy&&!running;
+  regionStartInput.disabled=busy||running||loopActive;
+  regionEndInput.disabled=busy||running||loopActive;
+  regionButton.disabled=busy||running||loopActive;
   rateInput.disabled=busy||running||loopActive;
   rateButton.disabled=busy||running||loopActive;
   stepButton.disabled=busy||running||loopActive;
@@ -204,6 +222,18 @@ resetButton.onclick=()=>request("/reset");
 rateButton.onclick=()=>{
   if(!rateInput.reportValidity()||rateInput.value==="") return;
   request("/rate?hz="+encodeURIComponent(rateInput.value));
+};
+regionButton.onclick=()=>{
+  if(!regionStartInput.reportValidity()||
+     !regionEndInput.reportValidity()) return;
+  const start=Number(regionStartInput.value);
+  const end=Number(regionEndInput.value);
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start){
+    status.textContent="Koniec obszaru musi być większy od początku.";
+    return;
+  }
+  request("/region?start="+encodeURIComponent(start)+
+    "&end="+encodeURIComponent(end));
 };
 playButton.disabled=true;
 request("/state","GET").then(()=>{playButton.disabled=false;});
@@ -299,11 +329,40 @@ def main():
                     history.append(row)
                     record_step(row)
                 elif self.path == "/reset":
+                    session.environment = SugarEnvironment(
+                        start=args.region_start,
+                        end=args.region_end,
+                        rate_hz=args.region_rate,
+                    )
                     session.reset()
                     last_step = None
                     history.clear()
                     session.environment.rate_hz = args.region_rate
                     output = None
+                elif urlsplit(self.path).path == "/region":
+                    try:
+                        query = parse_qs(urlsplit(self.path).query)
+                        starts = query["start"]
+                        ends = query["end"]
+                        if len(starts) != 1 or len(ends) != 1:
+                            raise ValueError("Podaj jedną parę granic.")
+                        environment = SugarEnvironment(
+                            start=float(starts[0]),
+                            end=float(ends[0]),
+                            rate_hz=session.environment.rate_hz,
+                        )
+                    except (KeyError, ValueError) as error:
+                        self.send(
+                            str(error).encode(),
+                            "text/plain; charset=utf-8", 400,
+                        )
+                        return
+                    session.environment = environment
+                    session.exit_ms = (
+                        session.brain.time_ms
+                        if session.movement.position >= environment.end - 1e-9
+                        else None
+                    )
                 elif urlsplit(self.path).path == "/rate":
                     try:
                         values = parse_qs(urlsplit(self.path).query)["hz"]
