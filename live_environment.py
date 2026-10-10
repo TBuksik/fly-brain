@@ -32,6 +32,7 @@ small{display:block;margin-top:20px;color:#9ca3af}
 <canvas id="spike-chart" width="900" height="240"></canvas>
 <p style="color:#9ca3af;font-size:14px">
 Ostatnie 100 kroków. Każda para słupków pokazuje impulsy w jednym kroku.
+Zielone tło oznacza bodziec większy od 0 Hz w tym kroku.
 </p>
 <button id="play">Uruchom</button>
 <button id="step">Jeden krok</button>
@@ -81,6 +82,14 @@ function drawSpikes(rows){
   )));
   const top=45, bottom=195, width=800;
   const y=n=>bottom-n/maximum*(bottom-top);
+  const slot=width/rows.length;
+
+  rows.forEach((row,i)=>{
+    if(row.sugar_hz>0){
+      c.fillStyle="#14532d";
+      c.fillRect(55+i*slot,top,slot,bottom-top);
+    }
+  });
 
   c.textAlign="right";
   for(const value of [...new Set([0,Math.ceil(maximum/2),maximum])]){
@@ -92,7 +101,6 @@ function drawSpikes(rows){
   }
   c.textAlign="left";
 
-  const slot=width/rows.length;
   rows.forEach((row,i)=>{
     const left=55+i*slot;
     const barWidth=slot*0.38;
