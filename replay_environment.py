@@ -32,6 +32,8 @@ def main():
         "before": float(row["position_before"]),
         "position": float(row["position"]),
         "rate": float(row["sugar_hz"]),
+        "left": int(row["dng103_left_spikes"]),
+        "right": int(row["dng103_right_spikes"]),
         "spikes": (
             int(row["dng103_left_spikes"])
             + int(row["dng103_right_spikes"])
@@ -59,6 +61,11 @@ small{display:block;color:#9ca3af;margin:16px 0}
 <p>Zielony obszar oznacza cukier. Symbol muchy pokazuje umowną pozycję.</p>
 <canvas id="view" width="900" height="260"></canvas>
 <p id="status"></p>
+<canvas id="spike-chart" width="900" height="240"></canvas>
+<p style="color:#9ca3af;font-size:14px">
+Ostatnie 100 zakończonych kroków do wybranego czasu.
+Zielone tło oznacza bodziec większy od 0 Hz w danym kroku.
+</p>
 <button id="replay">Odtwórz ponownie</button>
 <button id="pause">Pauza</button>
 <p>
@@ -78,7 +85,71 @@ const low = Math.min(data.regionStart, ...rows.map(r=>r.before)) - 0.2;
 const high = Math.max(data.regionEnd, ...rows.map(r=>r.position)) + 0.3;
 const x = p => 50 + (p-low)/(high-low)*800;
 
+
+const chart = document.querySelector("#spike-chart");
+const chartCtx = chart.getContext("2d");
+
+function drawSpikes(time){
+  const visible = rows.filter(r => r.end <= time).slice(-100);
+  const c = chartCtx;
+  c.clearRect(0,0,900,240);
+  c.textAlign="left";
+  c.font="15px system-ui";
+  c.fillStyle="#e5e7eb";
+  c.fillText("Impulsy w kroku 10 ms",55,25);
+  c.fillStyle="#38bdf8";
+  c.fillText("Lewy DNg103",400,25);
+  c.fillStyle="#fb923c";
+  c.fillText("Prawy DNg103",580,25);
+
+  if(!visible.length){
+    c.fillStyle="#9ca3af";
+    c.fillText("Brak zakończonych kroków w wybranym czasie.",55,110);
+    return;
+  }
+
+  const maximum=Math.max(1,...visible.map(r=>Math.max(r.left,r.right)));
+  const top=45, bottom=195, width=800;
+  const y=n=>bottom-n/maximum*(bottom-top);
+  const slot=width/visible.length;
+
+  visible.forEach((row,i)=>{
+    if(row.rate>0){
+      c.fillStyle="#14532d";
+      c.fillRect(55+i*slot,top,slot,bottom-top);
+    }
+  });
+
+  c.textAlign="right";
+  for(const value of [...new Set([0,Math.ceil(maximum/2),maximum])]){
+    c.strokeStyle="#374151";
+    c.beginPath();
+    c.moveTo(55,y(value));c.lineTo(855,y(value));c.stroke();
+    c.fillStyle="#9ca3af";
+    c.fillText(String(value),45,y(value)+5);
+  }
+  c.textAlign="left";
+
+  visible.forEach((row,i)=>{
+    const left=55+i*slot;
+    for(const [count,color,offset] of [
+      [row.left,"#38bdf8",0.08],
+      [row.right,"#fb923c",0.52],
+    ]){
+      c.fillStyle=color;
+      c.fillRect(left+slot*offset,y(count),slot*0.38,bottom-y(count));
+    }
+  });
+
+  c.fillStyle="#9ca3af";
+  c.fillText(`${visible[0].start.toFixed(0)} ms`,55,222);
+  c.textAlign="right";
+  c.fillText(`${visible[visible.length-1].end.toFixed(0)} ms`,855,222);
+  c.textAlign="left";
+}
+
 function draw(row, time, position) {
+  drawSpikes(time);
   ctx.clearRect(0,0,900,260);
   ctx.fillStyle="#14532d";
   ctx.fillRect(x(data.regionStart),70,
