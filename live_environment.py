@@ -3,10 +3,13 @@
 import argparse
 import csv
 import json
+import math
+from urllib.parse import parse_qs, urlsplit
 from datetime import datetime, timezone
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from brain_session import DT
 from environment_session import EnvironmentSession
 
 
@@ -27,6 +30,11 @@ small{display:block;margin-top:20px;color:#9ca3af}
 <button id="play">Uruchom</button>
 <button id="step">Jeden krok</button>
 <button id="reset">Od początku</button>
+<p>
+<label for="rate">Pobudzenie w obszarze cukru [Hz]:</label>
+<input id="rate" type="number" min="0" step="any" style="width:110px">
+<button id="apply-rate">Zastosuj</button>
+</p>
 <small>Umowna pozycja: 0.1 jednostki na impuls DNg103.
 Model wykonuje 10 ms symulacji na krok.</small>
 <script>
@@ -36,9 +44,13 @@ const status=document.querySelector("#status");
 const playButton=document.querySelector("#play");
 const stepButton=document.querySelector("#step");
 const resetButton=document.querySelector("#reset");
+const rateInput=document.querySelector("#rate");
+const rateButton=document.querySelector("#apply-rate");
 let running=false, busy=false, loopActive=false;
 
 function draw(s){
+  rateInput.max=s.maxRate;
+  if(document.activeElement!==rateInput) rateInput.value=s.regionRate;
   const low=Math.min(s.regionStart,s.initialPosition,s.position)-0.2;
   const high=Math.max(s.regionEnd,s.initialPosition,s.position)+0.3;
   const x=p=>50+(p-low)/(high-low)*800;
@@ -64,6 +76,9 @@ function draw(s){
 
 function controls(){
   playButton.textContent=running?"Pauza":"Uruchom";
+  playButton.disabled=busy&&!running;
+  rateInput.disabled=busy||running||loopActive;
+  rateButton.disabled=busy||running||loopActive;
   stepButton.disabled=busy||running||loopActive;
   resetButton.disabled=busy||running||loopActive;
 }
@@ -104,6 +119,10 @@ playButton.onclick=()=>{
 };
 stepButton.onclick=()=>request("/step");
 resetButton.onclick=()=>request("/reset");
+rateButton.onclick=()=>{
+  if(!rateInput.reportValidity()||rateInput.value==="") return;
+  request("/rate?hz="+encodeURIComponent(rateInput.value));
+};
 playButton.disabled=true;
 request("/state","GET").then(()=>{playButton.disabled=false;});
 </script>
@@ -157,6 +176,8 @@ def main():
 
     def state():
         return {
+            "regionRate": session.environment.rate_hz,
+            "maxRate": 1000 / DT,
             "regionStart": session.environment.start,
             "regionEnd": session.environment.end,
             "initialPosition": session.initial_position,
@@ -191,7 +212,22 @@ def main():
                     record_step(row)
                 elif self.path == "/reset":
                     session.reset()
+                    session.environment.rate_hz = args.region_rate
                     output = None
+                elif urlsplit(self.path).path == "/rate":
+                    try:
+                        values = parse_qs(urlsplit(self.path).query)["hz"]
+                        if len(values) != 1:
+                            raise ValueError("Podaj jedną częstotliwość.")
+                        rate = float(values[0])
+                        if not math.isfinite(rate) or not 0 <= rate <= 1000 / DT:
+                            raise ValueError("Częstotliwość poza zakresem.")
+                    except (KeyError, ValueError) as error:
+                        self.send(
+                            str(error).encode(), "text/plain; charset=utf-8", 400
+                        )
+                        return
+                    session.environment.rate_hz = rate
                 else:
                     self.send(b"Not found", "text/plain", 404)
                     return
