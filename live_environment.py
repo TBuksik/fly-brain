@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+from collections import deque
 import json
 import math
 from urllib.parse import parse_qs, urlsplit
@@ -28,6 +29,10 @@ small{display:block;margin-top:20px;color:#9ca3af}
 <canvas id="view" width="900" height="260"></canvas>
 <p id="status">Ładowanie…</p>
 <p id="last-step">Brak wykonanego kroku.</p>
+<canvas id="spike-chart" width="900" height="240"></canvas>
+<p style="color:#9ca3af;font-size:14px">
+Ostatnie 100 kroków. Każda para słupków pokazuje impulsy w jednym kroku.
+</p>
 <button id="play">Uruchom</button>
 <button id="step">Jeden krok</button>
 <button id="reset">Od początku</button>
@@ -50,7 +55,66 @@ const rateInput=document.querySelector("#rate");
 const rateButton=document.querySelector("#apply-rate");
 let running=false, busy=false, loopActive=false;
 
+
+const chart=document.querySelector("#spike-chart");
+const chartCtx=chart.getContext("2d");
+
+function drawSpikes(rows){
+  const c=chartCtx;
+  c.clearRect(0,0,900,240);
+  c.font="15px system-ui";
+  c.fillStyle="#e5e7eb";
+  c.fillText("Impulsy w kroku 10 ms",55,25);
+  c.fillStyle="#38bdf8";
+  c.fillText("Lewy DNg103",400,25);
+  c.fillStyle="#fb923c";
+  c.fillText("Prawy DNg103",580,25);
+
+  if(!rows.length){
+    c.fillStyle="#9ca3af";
+    c.fillText("Wykonaj krok, aby zobaczyć impulsy.",55,110);
+    return;
+  }
+
+  const maximum=Math.max(1,...rows.map(r=>Math.max(
+    r.dng103_left_spikes,r.dng103_right_spikes
+  )));
+  const top=45, bottom=195, width=800;
+  const y=n=>bottom-n/maximum*(bottom-top);
+
+  c.textAlign="right";
+  for(const value of [...new Set([0,Math.ceil(maximum/2),maximum])]){
+    c.strokeStyle="#374151";
+    c.beginPath();
+    c.moveTo(55,y(value));c.lineTo(855,y(value));c.stroke();
+    c.fillStyle="#9ca3af";
+    c.fillText(String(value),45,y(value)+5);
+  }
+  c.textAlign="left";
+
+  const slot=width/rows.length;
+  rows.forEach((row,i)=>{
+    const left=55+i*slot;
+    const barWidth=slot*0.38;
+    for(const [count,color,offset] of [
+      [row.dng103_left_spikes,"#38bdf8",0.08],
+      [row.dng103_right_spikes,"#fb923c",0.52],
+    ]){
+      c.fillStyle=color;
+      c.fillRect(left+slot*offset,y(count),
+        barWidth,bottom-y(count));
+    }
+  });
+
+  c.fillStyle="#9ca3af";
+  c.fillText(`${rows[0].start_ms.toFixed(0)} ms`,55,222);
+  c.textAlign="right";
+  c.fillText(`${rows[rows.length-1].end_ms.toFixed(0)} ms`,855,222);
+  c.textAlign="left";
+}
+
 function draw(s){
+  drawSpikes(s.history);
   const row=s.lastStep;
   lastStep.textContent=row
     ? `Ostatni krok: ${row.start_ms}–${row.end_ms} ms
@@ -159,6 +223,7 @@ def main():
 
     output = None
     last_step = None
+    history = deque(maxlen=100)
     directory = (
         Path(__file__).resolve().parent / "data/results/environment"
     )
@@ -188,6 +253,7 @@ def main():
     def state():
         return {
             "lastStep": last_step,
+            "history": list(history),
             "regionRate": session.environment.rate_hz,
             "maxRate": 1000 / DT,
             "regionStart": session.environment.start,
@@ -222,10 +288,12 @@ def main():
                 if self.path == "/step":
                     row = session.step()
                     last_step = row
+                    history.append(row)
                     record_step(row)
                 elif self.path == "/reset":
                     session.reset()
                     last_step = None
+                    history.clear()
                     session.environment.rate_hz = args.region_rate
                     output = None
                 elif urlsplit(self.path).path == "/rate":
