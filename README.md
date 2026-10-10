@@ -498,6 +498,12 @@ python live_environment.py --seed 42 --region-start 0.5 --region-end 1.5 --regio
 
 Reset restores the configured initial position and seed.
 
+Each completed step is saved to a CSV in `data/results/environment/`.
+The first step creates a `live-seed...csv` file and prints its path.
+Reset starts a separate recording on the next step, preserving previous runs.
+
+Replay a live recording with `python replay_environment.py PATH_TO_CSV`.
+
 Stop the server with Ctrl+C in the terminal.
 
 ### Annotation provenance
