@@ -455,6 +455,31 @@ The summary reports the first recorded crossing of the upper boundary,
 stimulus switch-off, position at switch-off, and subsequent displacement.
 `None` means no upper-boundary crossing was recorded.
 
+### Two-pulse stimulation experiment
+
+```bash
+python run_environment_pulses.py --seed 42
+```
+
+This runs one continuous brain session in the sugar region [0, 2):
+30 ms at 200 Hz, 30 ms at 0 Hz, then 30 ms at 200 Hz.
+Each phase contains three 10 ms steps. The brain and position are
+not reset between phases. Stimulation still depends on whether the
+current position is inside the region.
+
+The script prints each step and writes a timestamped
+pulses-seed...csv to data/results/environment/.
+Replay it with:
+
+```bash
+python replay_environment.py PATH_TO_CSV
+```
+
+The verified seed-42 run produced 10 DNg103 spikes and a final
+position of 1.0 after 90 ms. Spikes also occurred in the first step
+after stimulus switch-off, while the first step after renewed
+stimulation had no DNg103 spikes.
+
 ### Replay a saved trajectory
 
 ```bash
