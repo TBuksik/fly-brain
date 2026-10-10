@@ -475,6 +475,16 @@ simulation time and uses the recorded CSV; it does not run the brain live.
 Position changes at the end of each recorded step. The displayed spike
 count is the total for that entire step.
 
+The spike chart shows the last 100 completed steps up to the selected
+replay time, with separate bars for the left and right DNg103 neurons.
+Green chart backgrounds mark steps with stimulation above 0 Hz.
+Moving the time slider updates both the trajectory and the chart.
+
+The sugar region follows the boundaries recorded in each CSV row.
+The replay uses a fixed position scale covering the entire recording.
+Region changes appear at the start of the first step using the new bounds;
+changes followed by no simulation step are not recorded.
+
 ### Live browser simulation
 
 ```bash
@@ -496,15 +506,27 @@ and initial position 0. These can be configured from the command line:
 python live_environment.py --seed 42 --region-start 0.5 --region-end 1.5 --region-rate 50 --start-position 0.5
 ```
 
-Reset restores the configured initial position, seed, and stimulation rate.
+Reset restores the configured initial position, seed, stimulation rate,
+and sugar region boundaries. It also clears the chart and last-step display.
+
+The last-step display reports the stimulation used, separate left and right
+DNg103 spike counts, and displacement. The live chart shows the last 100
+completed steps. Green chart backgrounds mark steps with stimulation above
+0 Hz; these may precede the resulting neural response.
 
 While paused, enter a frequency in the browser and click "Zastosuj".
 The new rate applies inside the sugar region on subsequent steps,
 preserving simulation time, position, and brain state.
 Outside the region, stimulation remains zero.
 
-CSV rows record the stimulation rate used for each step.
-Changing the rate does not start a new recording.
+While paused, edit the region start and end and click "Zmień obszar".
+The end must be greater than the start, and both values must be finite.
+Changing the boundaries preserves simulation time, position, and brain state.
+Stimulation for the next step is recalculated from the current position.
+
+CSV rows record the region boundaries, region stimulation rate, and actual
+stimulation used for each step. Changing the rate or boundaries does not
+start a new recording; the new settings are recorded on the next step.
 
 Each completed step is saved to a CSV in `data/results/environment/`.
 The first step creates a `live-seed...csv` file and prints its path.
